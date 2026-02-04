@@ -104,6 +104,7 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
 
 | Method | Path              | Description |
 |--------|-------------------|-------------|
+| GET    | `/api/ping`       | Control route: returns `ok` (no imports that can crash at load). |
 | GET    | `/api/diag`       | Diagnostic: Cloudflare context and env bindings (no Prisma). |
 | GET    | `/api/pages`      | List pages (tree or flat with `?flat=1`). `?search=...` filters by title. |
 | GET    | `/api/pages/:id`  | Get one page by id. |

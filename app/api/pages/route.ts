@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getPrisma, dbErrorDetail } from "@/lib/db";
-import type { CloudflareEnv } from "@/lib/db";
 import { buildTree } from "@/lib/tree";
 import { isAuthRequired, isAuthenticatedFromRequest } from "@/lib/auth";
 
@@ -10,7 +8,9 @@ export const runtime = "edge";
 
 const CACHE_NO_STORE = "no-store";
 
-function requireAuth(request: NextRequest, env?: CloudflareEnv & { EDIT_PASSWORD?: string }): NextResponse | null {
+type EnvWithAuth = { DB?: D1Database; EDIT_PASSWORD?: string };
+
+function requireAuth(request: NextRequest, env?: EnvWithAuth): NextResponse | null {
   if (!isAuthRequired(env)) return null;
   if (!isAuthenticatedFromRequest(request, env)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,10 +23,12 @@ export async function GET(request: NextRequest) {
   headers.set("Cache-Control", CACHE_NO_STORE);
   try {
     const ctx = getRequestContext();
-    const env = ctx?.env as CloudflareEnv & { EDIT_PASSWORD?: string } | undefined;
-    console.error("[pages-api] env.DB present:", !!env?.DB);
+    const env = ctx?.env as EnvWithAuth | undefined;
+    console.error("[api] env.DB present:", !!env?.DB);
 
+    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
     const prisma = getPrisma(env);
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.trim();
     const flat = searchParams.get("flat") === "1";
@@ -47,10 +49,8 @@ export async function GET(request: NextRequest) {
     const tree = buildTree(pages);
     return NextResponse.json(tree, { headers });
   } catch (e) {
-    const name = e instanceof Error ? e.name : "Error";
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[pages-api]", name, message);
-
+    console.error("[api]", e);
+    const { dbErrorDetail } = await import("@/lib/db");
     const detail = dbErrorDetail(e);
     const body: { error: string; detail: string; stack?: string } = {
       error: "Failed to list pages",
@@ -68,13 +68,15 @@ export async function POST(request: NextRequest) {
   headers.set("Cache-Control", CACHE_NO_STORE);
   try {
     const ctx = getRequestContext();
-    const env = ctx?.env as CloudflareEnv & { EDIT_PASSWORD?: string } | undefined;
-    console.error("[pages-api] env.DB present:", !!env?.DB);
+    const env = ctx?.env as EnvWithAuth | undefined;
+    console.error("[api] env.DB present:", !!env?.DB);
 
     const authErr = requireAuth(request, env);
     if (authErr) return authErr;
 
+    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
     const prisma = getPrisma(env);
+
     const body = (await request.json().catch(() => ({}))) as { parentId?: string; title?: string };
     const parentId =
       typeof body.parentId === "string" ? body.parentId : undefined;
@@ -97,10 +99,8 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(page, { status: 201, headers });
   } catch (e) {
-    const name = e instanceof Error ? e.name : "Error";
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[pages-api]", name, message);
-
+    console.error("[api]", e);
+    const { dbErrorDetail } = await import("@/lib/db");
     const detail = dbErrorDetail(e);
     const body: { error: string; detail: string; stack?: string } = {
       error: "Failed to create page",

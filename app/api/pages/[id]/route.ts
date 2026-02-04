@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { PrismaClient } from "@prisma/client";
-import { getPrisma, dbErrorDetail } from "@/lib/db";
-import type { CloudflareEnv } from "@/lib/db";
 import { isAuthRequired, isAuthenticatedFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +7,17 @@ export const runtime = "edge";
 
 const CACHE_NO_STORE = "no-store";
 
-function requireAuth(request: NextRequest, env?: CloudflareEnv & { EDIT_PASSWORD?: string }): NextResponse | null {
+type EnvWithAuth = { DB?: D1Database; EDIT_PASSWORD?: string };
+
+/** Minimal type for cascadeSoftDelete; avoids importing @prisma/client at module scope. */
+type PrismaPageClient = {
+  page: {
+    findMany: (args: { where: { parentId: string; deletedAt: null } }) => Promise<{ id: string }[]>;
+    update: (args: { where: { id: string }; data: { deletedAt: Date } }) => Promise<unknown>;
+  };
+};
+
+function requireAuth(request: NextRequest, env?: EnvWithAuth): NextResponse | null {
   if (!isAuthRequired(env)) return null;
   if (!isAuthenticatedFromRequest(request, env)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +25,7 @@ function requireAuth(request: NextRequest, env?: CloudflareEnv & { EDIT_PASSWORD
   return null;
 }
 
-async function cascadeSoftDelete(prisma: PrismaClient, id: string, deletedAt: Date) {
+async function cascadeSoftDelete(prisma: PrismaPageClient, id: string, deletedAt: Date) {
   const children = await prisma.page.findMany({
     where: { parentId: id, deletedAt: null },
   });
@@ -43,10 +50,12 @@ export async function GET(
   }
   try {
     const ctx = getRequestContext();
-    const env = ctx?.env as CloudflareEnv & { EDIT_PASSWORD?: string } | undefined;
-    console.error("[pages-api] env.DB present:", !!env?.DB);
+    const env = ctx?.env as EnvWithAuth | undefined;
+    console.error("[api] env.DB present:", !!env?.DB);
 
+    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
     const prisma = getPrisma(env);
+
     const page = await prisma.page.findFirst({
       where: { id, deletedAt: null },
     });
@@ -55,10 +64,8 @@ export async function GET(
     }
     return NextResponse.json(page, { headers });
   } catch (e) {
-    const name = e instanceof Error ? e.name : "Error";
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[pages-api]", name, message);
-
+    console.error("[api]", e);
+    const { dbErrorDetail } = await import("@/lib/db");
     const detail = dbErrorDetail(e);
     const body: { error: string; detail: string; stack?: string } = {
       error: "Failed to load page",
@@ -83,13 +90,15 @@ export async function PATCH(
   }
   try {
     const ctx = getRequestContext();
-    const env = ctx?.env as CloudflareEnv & { EDIT_PASSWORD?: string } | undefined;
-    console.error("[pages-api] env.DB present:", !!env?.DB);
+    const env = ctx?.env as EnvWithAuth | undefined;
+    console.error("[api] env.DB present:", !!env?.DB);
 
     const authErr = requireAuth(request, env);
     if (authErr) return authErr;
 
+    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
     const prisma = getPrisma(env);
+
     const body = (await request.json().catch(() => ({}))) as {
       title?: string;
       parentId?: string | null;
@@ -108,10 +117,8 @@ export async function PATCH(
     });
     return NextResponse.json(page, { headers });
   } catch (e) {
-    const name = e instanceof Error ? e.name : "Error";
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[pages-api]", name, message);
-
+    console.error("[api]", e);
+    const { dbErrorDetail } = await import("@/lib/db");
     const detail = dbErrorDetail(e);
     const body: { error: string; detail: string; stack?: string } = {
       error: "Failed to update page",
@@ -136,13 +143,15 @@ export async function DELETE(
   }
   try {
     const ctx = getRequestContext();
-    const env = ctx?.env as CloudflareEnv & { EDIT_PASSWORD?: string } | undefined;
-    console.error("[pages-api] env.DB present:", !!env?.DB);
+    const env = ctx?.env as EnvWithAuth | undefined;
+    console.error("[api] env.DB present:", !!env?.DB);
 
     const authErr = requireAuth(request, env);
     if (authErr) return authErr;
 
+    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
     const prisma = getPrisma(env);
+
     const deletedAt = new Date();
     await prisma.page.update({
       where: { id },
@@ -151,10 +160,8 @@ export async function DELETE(
     await cascadeSoftDelete(prisma, id, deletedAt);
     return NextResponse.json({ ok: true }, { headers });
   } catch (e) {
-    const name = e instanceof Error ? e.name : "Error";
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[pages-api]", name, message);
-
+    console.error("[api]", e);
+    const { dbErrorDetail } = await import("@/lib/db");
     const detail = dbErrorDetail(e);
     const body: { error: string; detail: string; stack?: string } = {
       error: "Failed to delete page",

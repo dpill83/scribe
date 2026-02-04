@@ -5,30 +5,28 @@ export const dynamic = "force-dynamic";
 export const runtime = "edge";
 
 /**
- * Diagnostic route: reports Cloudflare request context and env bindings.
- * Does NOT import Prisma. Always returns JSON; never throws.
+ * Diagnostic route: reports Cloudflare env.DB. No Prisma import.
+ * Always returns JSON; never throws. Wrapped in try/catch with [api] logging.
  */
 export async function GET() {
   try {
     const ctx = getRequestContext();
     const env = ctx?.env as unknown as Record<string, unknown> | undefined;
-    const envKeys = env && typeof env === "object" ? Object.keys(env) : [];
-    const hasDB = env != null && "DB" in env && env.DB != null;
+    const hasDB = env != null && typeof env === "object" && "DB" in env && env.DB != null;
 
     return NextResponse.json({
+      hasDB: !!hasDB,
       contextExists: true,
-      envDBExists: hasDB,
-      envKeys,
+      envDBExists: !!hasDB,
+      envKeys: env && typeof env === "object" ? Object.keys(env) : [],
     });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    const name = e instanceof Error ? e.name : "Error";
-    return NextResponse.json({
-      contextExists: false,
-      envDBExists: false,
-      envKeys: [],
-      error: name,
-      detail: message,
-    });
+  } catch (err) {
+    console.error("[api]", err);
+    const name = err instanceof Error ? err.name : "Error";
+    const detail = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: "Diag failed", detail, name, hasDB: false },
+      { status: 500 }
+    );
   }
 }
