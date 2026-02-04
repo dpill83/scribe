@@ -9,4 +9,4 @@ pages_build_output_dir = ".vercel/output/static"
 [[d1_databases]]
 binding = "DB"
 database_name = "scribe-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "c5fbbe85-21d7-42ef-8de1-00c2a68937b5"
