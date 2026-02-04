@@ -2,14 +2,9 @@
 # https://opennext.js.org/cloudflare
 
 name = "scribe"
-main = ".open-next/worker.js"
 compatibility_date = "2026-02-04"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 pages_build_output_dir = ".open-next"
-
-[[services]]
-binding = "WORKER_SELF_REFERENCE"
-service = "scribe"
 
 [[d1_databases]]
 binding = "DB"
