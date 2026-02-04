@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPrisma } from "@/lib/db";
+import { getPrisma, D1BindingUnavailableError } from "@/lib/db";
 import { buildTree } from "@/lib/tree";
 import { isAuthRequired, isAuthenticatedFromRequest } from "@/lib/auth";
 import { getOptionalRequestContext } from "@cloudflare/next-on-pages";
@@ -45,8 +45,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(tree, { headers });
   } catch (e) {
     console.error(e);
+    if (e instanceof D1BindingUnavailableError) {
+      return NextResponse.json(
+        { error: e.message },
+        { status: 503, headers }
+      );
+    }
+    const message = e instanceof Error ? e.message : "Unknown error";
+    const devDetail =
+      process.env.NODE_ENV === "development" ? { detail: message } : {};
     return NextResponse.json(
-      { error: "Failed to list pages" },
+      { error: "Failed to list pages", ...devDetail },
       { status: 500, headers }
     );
   }
@@ -82,8 +91,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(page, { status: 201, headers });
   } catch (e) {
     console.error(e);
+    if (e instanceof D1BindingUnavailableError) {
+      return NextResponse.json(
+        { error: e.message },
+        { status: 503, headers }
+      );
+    }
+    const message = e instanceof Error ? e.message : "Unknown error";
+    const devDetail =
+      process.env.NODE_ENV === "development" ? { detail: message } : {};
     return NextResponse.json(
-      { error: "Failed to create page" },
+      { error: "Failed to create page", ...devDetail },
       { status: 500, headers }
     );
   }

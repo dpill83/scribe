@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPrisma } from "@/lib/db";
+import { getPrisma, D1BindingUnavailableError } from "@/lib/db";
 import { isAuthRequired, isAuthenticatedFromRequest } from "@/lib/auth";
 import { getOptionalRequestContext } from "@cloudflare/next-on-pages";
 
@@ -39,6 +39,12 @@ export async function GET(
     return NextResponse.json(page, { headers });
   } catch (e) {
     console.error(e);
+    if (e instanceof D1BindingUnavailableError) {
+      return NextResponse.json(
+        { error: e.message },
+        { status: 503, headers }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to load page" },
       { status: 500, headers }
@@ -92,6 +98,12 @@ export async function PATCH(
     return NextResponse.json(page, { headers });
   } catch (e) {
     console.error(e);
+    if (e instanceof D1BindingUnavailableError) {
+      return NextResponse.json(
+        { error: e.message },
+        { status: 503, headers }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to update page" },
       { status: 500, headers }
@@ -122,6 +134,12 @@ export async function DELETE(
     return NextResponse.json({ ok: true }, { headers });
   } catch (e) {
     console.error(e);
+    if (e instanceof D1BindingUnavailableError) {
+      return NextResponse.json(
+        { error: e.message },
+        { status: 503, headers }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to delete page" },
       { status: 500, headers }
