@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 /**
  * Diagnostic route: reports Cloudflare env.DB. No Prisma import.

@@ -3,6 +3,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isAuthRequired, isAuthenticatedFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 const CACHE_NO_STORE = "no-store";
 

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Editor } from "@/components/Editor";
 
+export const runtime = "edge";
+
 interface PageData {
   id: string;
   title: string;
