@@ -52,10 +52,8 @@ export async function GET(request: NextRequest) {
       );
     }
     const message = e instanceof Error ? e.message : "Unknown error";
-    const devDetail =
-      process.env.NODE_ENV === "development" ? { detail: message } : {};
     return NextResponse.json(
-      { error: "Failed to list pages", ...devDetail },
+      { error: "Failed to list pages", detail: message },
       { status: 500, headers }
     );
   }
@@ -98,10 +96,8 @@ export async function POST(request: NextRequest) {
       );
     }
     const message = e instanceof Error ? e.message : "Unknown error";
-    const devDetail =
-      process.env.NODE_ENV === "development" ? { detail: message } : {};
     return NextResponse.json(
-      { error: "Failed to create page", ...devDetail },
+      { error: "Failed to create page", detail: message },
       { status: 500, headers }
     );
   }

@@ -45,8 +45,9 @@ export async function GET(
         { status: 503, headers }
       );
     }
+    const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to load page" },
+      { error: "Failed to load page", detail: message },
       { status: 500, headers }
     );
   }
@@ -104,8 +105,9 @@ export async function PATCH(
         { status: 503, headers }
       );
     }
+    const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to update page" },
+      { error: "Failed to update page", detail: message },
       { status: 500, headers }
     );
   }
@@ -140,8 +142,9 @@ export async function DELETE(
         { status: 503, headers }
       );
     }
+    const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to delete page" },
+      { error: "Failed to delete page", detail: message },
       { status: 500, headers }
     );
   }
