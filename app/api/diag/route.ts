@@ -11,7 +11,7 @@ export const runtime = "edge";
 export async function GET() {
   try {
     const ctx = getRequestContext();
-    const env = ctx?.env as Record<string, unknown> | undefined;
+    const env = ctx?.env as unknown as Record<string, unknown> | undefined;
     const envKeys = env && typeof env === "object" ? Object.keys(env) : [];
     const hasDB = env != null && "DB" in env && env.DB != null;
 
