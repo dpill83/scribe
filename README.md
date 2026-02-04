@@ -88,6 +88,9 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
 
 4. **Deploy** by connecting the repo to Cloudflare Pages or running `wrangler pages deploy` with the built output.
 
+   If you see "No such module async_hooks" at runtime, Prisma must use the edge client: `lib/db.ts` and `lib/tree.ts` import from `@prisma/client/edge`, and the schema has `engineType = "client"`. After `npm run pages:build`, check for remaining Node-only references:  
+   `grep -r async_hooks .vercel/output/static 2>/dev/null || true` (or equivalent on Windows). Any reported paths should be removed or replaced with edge-safe imports.
+
 ## Scripts
 
 | Script         | Description                                      |

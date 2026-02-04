@@ -1,4 +1,4 @@
-import type { Page } from "@prisma/client";
+import type { Page } from "@prisma/client/edge";
 
 export interface PageNode extends Page {
   children: PageNode[];
