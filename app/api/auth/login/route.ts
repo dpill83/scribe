@@ -6,20 +6,19 @@ import {
   clearAuthCookieHeaders,
   isAuthRequired,
 } from "@/lib/auth";
-import { getOptionalRequestContext } from "@cloudflare/next-on-pages";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
-  const ctx = getOptionalRequestContext();
-  const env = ctx?.env as { EDIT_PASSWORD?: string } | undefined;
-  if (!isAuthRequired(env)) {
+  const { env } = getCloudflareContext();
+  const envTyped = env as { EDIT_PASSWORD?: string } | undefined;
+  if (!isAuthRequired(envTyped)) {
     return NextResponse.json({ ok: true });
   }
   const body = (await request.json().catch(() => ({}))) as { password?: string };
   const password = typeof body.password === "string" ? body.password : "";
-  if (!verifyPassword(password, env)) {
+  if (!verifyPassword(password, envTyped)) {
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
   const headers = setAuthCookieHeaders();
@@ -32,11 +31,11 @@ export async function DELETE() {
 }
 
 export async function GET() {
-  const ctx = getOptionalRequestContext();
-  const env = ctx?.env as { EDIT_PASSWORD?: string } | undefined;
-  const required = isAuthRequired(env);
+  const { env } = getCloudflareContext();
+  const envTyped = env as { EDIT_PASSWORD?: string } | undefined;
+  const required = isAuthRequired(envTyped);
   return NextResponse.json({
     required,
-    hasPassword: !!getEditPassword(env),
+    hasPassword: !!getEditPassword(envTyped),
   });
 }

@@ -1,6 +1,6 @@
 # Scribe
 
-Your campaign scribe — nested page tree, TipTap editor, autosave, optional shared-password auth. Built with Next.js 14 (App Router), TypeScript, Tailwind, Prisma (SQLite locally / Cloudflare D1 in production), and TipTap. Hosted on Cloudflare Pages.
+Your campaign scribe — nested page tree, TipTap editor, autosave, optional shared-password auth. Built with Next.js 14 (App Router), TypeScript, Tailwind, Prisma (SQLite locally / Cloudflare D1 in production), and TipTap. Hosted on Cloudflare Workers via OpenNext.
 
 ## Tech stack
 
@@ -8,7 +8,7 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
 - **Tailwind CSS** + `@tailwindcss/typography`
 - **Prisma** – SQLite for local dev, Cloudflare D1 in production (via `@prisma/adapter-d1`)
 - **TipTap** – block-style editor
-- **Cloudflare** – Pages for hosting, D1 for production DB, Pages Functions for API routes
+- **Cloudflare** – Workers for hosting (via `@opennextjs/cloudflare`), D1 for production DB
 
 ## Local setup
 
@@ -62,9 +62,9 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
 
    Open [http://localhost:3000](http://localhost:3000). Restart the server and pages persist (SQLite file in `prisma/dev.db`).
 
-## Production (Cloudflare Pages + D1)
+## Production (Cloudflare Workers + D1)
 
-1. **Create a D1 database** in the Cloudflare dashboard (or `wrangler d1 create scribe-db`) and note the `database_id`.
+1. **Create a D1 database** in the Cloudflare dashboard (or `npx wrangler d1 create scribe-db`) and note the `database_id`. Set `database_id` in `wrangler.toml` if it differs.
 
 2. **Apply migrations to D1** (same SQL as local). From the project root:
 
@@ -72,24 +72,13 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
    npx wrangler d1 execute scribe-db --remote --file=./prisma/migrations/20240203000000_init/migration.sql
    ```
 
-   Or use Wrangler migrations (if you add a `migrations` folder to the D1 config):
-
-   ```bash
-   npx wrangler d1 migrations apply scribe-db --remote
-   ```
-
    Or run the initial migration SQL manually in the D1 console. If the `Page` table is missing, the API returns a 500 with `detail` explaining this.
 
-3. **Configure the Pages project**:
-   - **Build command**: `npx @cloudflare/next-on-pages` (or `npm run pages:build`)
-   - **Build output directory**: per `@cloudflare/next-on-pages` docs (e.g. `.vercel/output/static`)
-   - **Environment variables**: set `EDIT_PASSWORD` in Pages → Settings → Environment variables if you want shared-password auth.
-   - **D1 binding**: In Pages → Settings → Bindings, add a D1 database binding with variable name `DB` and select your D1 database. Update `wrangler.toml` with your `database_id` if you deploy via wrangler.
+3. **Configure the Worker** in `wrangler.toml`: D1 binding `DB` is already set. Set env vars/secrets in Cloudflare (e.g. `EDIT_PASSWORD` for auth) via dashboard or `npx wrangler secret put EDIT_PASSWORD`.
 
-4. **Deploy** by connecting the repo to Cloudflare Pages or running `wrangler pages deploy` with the built output.
+4. **Preview locally**: `npm run preview` — builds with OpenNext and runs the app locally (Wrangler dev). Open the URL shown (e.g. `http://localhost:8787`). For local env (e.g. Next.js env loading), add a `.dev.vars` file with `NEXTJS_ENV=development` (and optionally `EDIT_PASSWORD=...`).
 
-   If you see "No such module async_hooks" at runtime, Prisma must use the edge client: `lib/db.ts` and `lib/tree.ts` import from `@prisma/client/edge`, and the schema has `engineType = "client"`. After `npm run pages:build`, check for remaining Node-only references:  
-   `grep -r async_hooks .vercel/output/static 2>/dev/null || true` (or equivalent on Windows). Any reported paths should be removed or replaced with edge-safe imports.
+5. **Deploy**: `npm run deploy` — builds and deploys to Cloudflare Workers. After deploy, open the URL shown in the terminal (e.g. `https://scribe.<your-subdomain>.workers.dev`).
 
 ## Scripts
 
@@ -97,7 +86,9 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
 |----------------|--------------------------------------------------|
 | `npm run dev`  | Start Next.js dev server                         |
 | `npm run build`| Next.js production build                        |
-| `npm run pages:build` | Build for Cloudflare Pages (`@cloudflare/next-on-pages`) |
+| `npm run preview` | Build + run locally (OpenNext + Wrangler dev)   |
+| `npm run deploy` | Build + deploy to Cloudflare Workers            |
+| `npm run cf-typegen` | Generate `cloudflare-env.d.ts` from wrangler config |
 | `npm run db:generate` | Generate Prisma client                       |
 | `npm run db:migrate`  | Run Prisma migrations (local)               |
 | `npm run db:seed`     | Seed local DB with sample pages             |

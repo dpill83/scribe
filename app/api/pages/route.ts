@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { buildTree } from "@/lib/tree";
 import { isAuthRequired, isAuthenticatedFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 const CACHE_NO_STORE = "no-store";
 
@@ -22,12 +21,12 @@ export async function GET(request: NextRequest) {
   const headers = new Headers();
   headers.set("Cache-Control", CACHE_NO_STORE);
   try {
-    const ctx = getRequestContext();
-    const env = ctx?.env as EnvWithAuth | undefined;
-    console.error("[api] env.DB present:", !!env?.DB);
+    const { env } = getCloudflareContext();
+    const envTyped = env as EnvWithAuth | undefined;
+    console.error("[api] env.DB present:", !!envTyped?.DB);
 
     const { getPrisma } = await import("@/lib/db");
-    const prisma = getPrisma(env);
+    const prisma = getPrisma(envTyped);
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.trim();
@@ -67,15 +66,15 @@ export async function POST(request: NextRequest) {
   const headers = new Headers();
   headers.set("Cache-Control", CACHE_NO_STORE);
   try {
-    const ctx = getRequestContext();
-    const env = ctx?.env as EnvWithAuth | undefined;
-    console.error("[api] env.DB present:", !!env?.DB);
+    const { env } = getCloudflareContext();
+    const envTyped = env as EnvWithAuth | undefined;
+    console.error("[api] env.DB present:", !!envTyped?.DB);
 
-    const authErr = requireAuth(request, env);
+    const authErr = requireAuth(request, envTyped);
     if (authErr) return authErr;
 
     const { getPrisma } = await import("@/lib/db");
-    const prisma = getPrisma(env);
+    const prisma = getPrisma(envTyped);
 
     const body = (await request.json().catch(() => ({}))) as { parentId?: string; title?: string };
     const parentId =

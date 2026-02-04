@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 /**
  * Diagnostic route: reports Cloudflare env.DB. No Prisma import.
@@ -10,15 +9,15 @@ export const runtime = "edge";
  */
 export async function GET() {
   try {
-    const ctx = getRequestContext();
-    const env = ctx?.env as unknown as Record<string, unknown> | undefined;
-    const hasDB = env != null && typeof env === "object" && "DB" in env && env.DB != null;
+    const { env } = getCloudflareContext();
+    const envObj = env as unknown as Record<string, unknown> | undefined;
+    const hasDB = envObj != null && typeof envObj === "object" && "DB" in envObj && envObj.DB != null;
 
     return NextResponse.json({
       hasDB: !!hasDB,
       contextExists: true,
       envDBExists: !!hasDB,
-      envKeys: env && typeof env === "object" ? Object.keys(env) : [],
+      envKeys: envObj && typeof envObj === "object" ? Object.keys(envObj) : [],
     });
   } catch (err) {
     console.error("[api]", err);
