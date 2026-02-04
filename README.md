@@ -66,13 +66,19 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
 
 1. **Create a D1 database** in the Cloudflare dashboard (or `wrangler d1 create scribe-db`) and note the `database_id`.
 
-2. **Apply migrations to D1** (same SQL as local). For each file in `prisma/migrations/` run:
+2. **Apply migrations to D1** (same SQL as local). From the project root:
 
    ```bash
-   wrangler d1 execute scribe-db --file=./prisma/migrations/<timestamp>_init/migration.sql
+   npx wrangler d1 execute scribe-db --remote --file=./prisma/migrations/20240203000000_init/migration.sql
    ```
 
-   Or run the initial migration SQL manually in the D1 console.
+   Or use Wrangler migrations (if you add a `migrations` folder to the D1 config):
+
+   ```bash
+   npx wrangler d1 migrations apply scribe-db --remote
+   ```
+
+   Or run the initial migration SQL manually in the D1 console. If the `Page` table is missing, the API returns a 500 with `detail` explaining this.
 
 3. **Configure the Pages project**:
    - **Build command**: `npx @cloudflare/next-on-pages` (or `npm run pages:build`)
@@ -98,6 +104,7 @@ Your campaign scribe — nested page tree, TipTap editor, autosave, optional sha
 
 | Method | Path              | Description |
 |--------|-------------------|-------------|
+| GET    | `/api/diag`       | Diagnostic: Cloudflare context and env bindings (no Prisma). |
 | GET    | `/api/pages`      | List pages (tree or flat with `?flat=1`). `?search=...` filters by title. |
 | GET    | `/api/pages/:id`  | Get one page by id. |
 | POST   | `/api/pages`      | Create page. Body: `{ parentId?, title? }`. |

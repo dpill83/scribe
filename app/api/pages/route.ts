@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPrisma, D1BindingUnavailableError } from "@/lib/db";
+import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getPrisma, dbErrorDetail } from "@/lib/db";
+import type { CloudflareEnv } from "@/lib/db";
 import { buildTree } from "@/lib/tree";
 import { isAuthRequired, isAuthenticatedFromRequest } from "@/lib/auth";
-import { getOptionalRequestContext } from "@cloudflare/next-on-pages";
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";
 
 const CACHE_NO_STORE = "no-store";
 
-function requireAuth(request: NextRequest): NextResponse | null {
-  const ctx = getOptionalRequestContext();
-  const env = ctx?.env as { EDIT_PASSWORD?: string } | undefined;
+function requireAuth(request: NextRequest, env?: CloudflareEnv & { EDIT_PASSWORD?: string }): NextResponse | null {
   if (!isAuthRequired(env)) return null;
   if (!isAuthenticatedFromRequest(request, env)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,7 +22,11 @@ export async function GET(request: NextRequest) {
   const headers = new Headers();
   headers.set("Cache-Control", CACHE_NO_STORE);
   try {
-    const prisma = getPrisma();
+    const ctx = getRequestContext();
+    const env = ctx?.env as CloudflareEnv & { EDIT_PASSWORD?: string } | undefined;
+    console.error("[pages-api] env.DB present:", !!env?.DB);
+
+    const prisma = getPrisma(env);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.trim();
     const flat = searchParams.get("flat") === "1";
@@ -44,27 +47,34 @@ export async function GET(request: NextRequest) {
     const tree = buildTree(pages);
     return NextResponse.json(tree, { headers });
   } catch (e) {
-    console.error(e);
-    if (e instanceof D1BindingUnavailableError) {
-      return NextResponse.json(
-        { error: e.message },
-        { status: 503, headers }
-      );
+    const name = e instanceof Error ? e.name : "Error";
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[pages-api]", name, message);
+
+    const detail = dbErrorDetail(e);
+    const body: { error: string; detail: string; stack?: string } = {
+      error: "Failed to list pages",
+      detail,
+    };
+    if (process.env.NODE_ENV === "development" && e instanceof Error && e.stack) {
+      body.stack = e.stack;
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to list pages", detail: message },
-      { status: 500, headers }
-    );
+    return NextResponse.json(body, { status: 500, headers });
   }
 }
 
 export async function POST(request: NextRequest) {
-  const authErr = requireAuth(request);
-  if (authErr) return authErr;
   const headers = new Headers();
   headers.set("Cache-Control", CACHE_NO_STORE);
   try {
+    const ctx = getRequestContext();
+    const env = ctx?.env as CloudflareEnv & { EDIT_PASSWORD?: string } | undefined;
+    console.error("[pages-api] env.DB present:", !!env?.DB);
+
+    const authErr = requireAuth(request, env);
+    if (authErr) return authErr;
+
+    const prisma = getPrisma(env);
     const body = (await request.json().catch(() => ({}))) as { parentId?: string; title?: string };
     const parentId =
       typeof body.parentId === "string" ? body.parentId : undefined;
@@ -73,7 +83,6 @@ export async function POST(request: NextRequest) {
         ? body.title.trim()
         : "Untitled";
 
-    const prisma = getPrisma();
     const maxOrder = await prisma.page.aggregate({
       _max: { sortOrder: true },
       where: {
@@ -88,17 +97,18 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(page, { status: 201, headers });
   } catch (e) {
-    console.error(e);
-    if (e instanceof D1BindingUnavailableError) {
-      return NextResponse.json(
-        { error: e.message },
-        { status: 503, headers }
-      );
+    const name = e instanceof Error ? e.name : "Error";
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[pages-api]", name, message);
+
+    const detail = dbErrorDetail(e);
+    const body: { error: string; detail: string; stack?: string } = {
+      error: "Failed to create page",
+      detail,
+    };
+    if (process.env.NODE_ENV === "development" && e instanceof Error && e.stack) {
+      body.stack = e.stack;
     }
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to create page", detail: message },
-      { status: 500, headers }
-    );
+    return NextResponse.json(body, { status: 500, headers });
   }
 }
