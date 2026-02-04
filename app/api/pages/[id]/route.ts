@@ -53,7 +53,7 @@ export async function GET(
     const env = ctx?.env as EnvWithAuth | undefined;
     console.error("[api] env.DB present:", !!env?.DB);
 
-    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
+    const { getPrisma } = await import("@/lib/db");
     const prisma = getPrisma(env);
 
     const page = await prisma.page.findFirst({
@@ -96,7 +96,7 @@ export async function PATCH(
     const authErr = requireAuth(request, env);
     if (authErr) return authErr;
 
-    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
+    const { getPrisma } = await import("@/lib/db");
     const prisma = getPrisma(env);
 
     const body = (await request.json().catch(() => ({}))) as {
@@ -149,7 +149,7 @@ export async function DELETE(
     const authErr = requireAuth(request, env);
     if (authErr) return authErr;
 
-    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
+    const { getPrisma } = await import("@/lib/db");
     const prisma = getPrisma(env);
 
     const deletedAt = new Date();

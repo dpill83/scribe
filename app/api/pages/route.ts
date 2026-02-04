@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const env = ctx?.env as EnvWithAuth | undefined;
     console.error("[api] env.DB present:", !!env?.DB);
 
-    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
+    const { getPrisma } = await import("@/lib/db");
     const prisma = getPrisma(env);
 
     const { searchParams } = new URL(request.url);
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const authErr = requireAuth(request, env);
     if (authErr) return authErr;
 
-    const { getPrisma, dbErrorDetail } = await import("@/lib/db");
+    const { getPrisma } = await import("@/lib/db");
     const prisma = getPrisma(env);
 
     const body = (await request.json().catch(() => ({}))) as { parentId?: string; title?: string };
